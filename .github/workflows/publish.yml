@@ -3,10 +3,12 @@ name: build-publish
 on:
   push:
     branches: [main, master]
-    # 只有改到"会影响镜像内容"的文件才触发重建；改 compose/Caddyfile/文档等不会浪费构建
+    # 只有改到"会影响镜像内容"的文件才触发重建；改 compose/文档等不会浪费构建
     paths:
       - 'Dockerfile'
       - 'entrypoint.sh'
+      - 'caddy.Dockerfile'
+      - 'Caddyfile'
       - '.github/workflows/publish.yml'
   workflow_dispatch:
   # 每周一 03:00 UTC（北京时间周一 11:00）自动重建一次：
@@ -63,6 +65,25 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           # 供应链证明：记录镜像由哪个仓库/提交构建、依赖清单（SBOM）
+          provenance: true
+          sbom: true
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.created=${{ github.event.head_commit.timestamp }}
+
+      # 第二个镜像：caddy HTTPS 网关（Caddyfile 已打进镜像，NAS 上无需再放配置文件）
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: caddy.Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}-caddy:latest
+            ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}-caddy:sha-${{ github.sha }}
+          platforms: linux/amd64,linux/arm64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
           provenance: true
           sbom: true
           labels: |
