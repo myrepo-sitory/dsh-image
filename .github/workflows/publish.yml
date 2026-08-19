@@ -3,7 +3,16 @@ name: build-publish
 on:
   push:
     branches: [main, master]
+    # 只有改到"会影响镜像内容"的文件才触发重建；改 compose/Caddyfile/文档等不会浪费构建
+    paths:
+      - 'Dockerfile'
+      - 'entrypoint.sh'
+      - '.github/workflows/publish.yml'
   workflow_dispatch:
+  # 每周一 03:00 UTC（北京时间周一 11:00）自动重建一次：
+  # 若 Dockerfile 的 ARG DSH_VERSION=latest，则自动跟随官方最新版；否则等于每周空跑一遍（无副作用）
+  schedule:
+    - cron: '0 3 * * 1'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -19,10 +28,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: 读取 DSH 版本（Dockerfile 里的 ARG 是唯一事实来源）
+      - name: 解析 DSH 版本（latest = 自动解析官方 npm 最新版，其他值 = 锁定该版本）
         id: version
         run: |
-          VER=$(sed -n 's/^ARG DSH_VERSION=//p' Dockerfile)
+          ARGVER=$(sed -n 's/^ARG DSH_VERSION=//p' Dockerfile)
+          if [ "$ARGVER" = "latest" ]; then
+            VER=$(npm view @deepseek-ai/dsh version)
+          else
+            VER="$ARGVER"
+          fi
           echo "dsh_version=$VER" >> "$GITHUB_OUTPUT"
 
       - uses: docker/setup-qemu-action@v3
@@ -38,6 +52,9 @@ jobs:
         with:
           context: .
           push: true
+          # 把解析出的确切版本传给构建（即使 ARG 写的是 latest，也按解析到的版本精确安装，保证可复现）
+          build-args: |
+            DSH_VERSION=${{ steps.version.outputs.dsh_version }}
           tags: |
             ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}:latest
             ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}:${{ steps.version.outputs.dsh_version }}
