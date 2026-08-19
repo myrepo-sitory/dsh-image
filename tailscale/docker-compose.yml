@@ -1,0 +1,53 @@
+# Tailscale 版部署：NAS 不需要开放任何端口，全部流量走 Tailscale 加密隧道
+# 访问地址：https://dsh.你的tailnet名.ts.net（真证书、浏览器零警告、在家在外面都能开）
+# 部署前先看同目录 README.md！
+# 切换回 Caddy 版：停掉本项目 → 用根目录的 docker-compose.yml（见根 README）
+#
+# ⚠️ 重要：本项目与 Caddy 版共用同一份 ./data 数据目录，
+#    同一时间只允许运行一个项目，否则两个 dsh 同时写同一份数据会损坏。
+
+services:
+  dsh:
+    image: ghcr.io/你的GitHub用户名/dsh-image:latest
+    container_name: dsh
+    restart: unless-stopped
+    environment:
+      - DSH_HOME=/data
+      - DEEPSEEK_API_KEY=sk-你的Key
+      - TZ=Asia/Shanghai
+    volumes:
+      - ./data:/data
+      - ./workspace:/workspace
+      - /home/leon/agent:/workspace/agent
+    init: true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    # 不向局域网/公网发布任何端口：访问只走 Tailscale 隧道
+    networks: [dshnet]
+
+  # Tailscale 网关：把 dsh 的 3080 通过 HTTPS 隧道发布到 tailnet
+  tailscale:
+    image: docker.m.daocloud.io/tailscale/tailscale:latest   # 拉不到就换 docker.1panel.live/tailscale/tailscale:latest 等
+    container_name: dsh-tailscale
+    hostname: dsh                    # 机器名 = dsh → 最终地址 dsh.<tailnet>.ts.net
+    restart: unless-stopped
+    environment:
+      - TS_AUTHKEY=tskey-你的认证密钥        # 管理台生成的 Auth Key（见 README 第 3 步）
+      - TS_STATE_DIR=/var/lib/tailscale
+      - TS_SERVE_CONFIG=/config/serve.json   # 应用 serve 配置（HTTPS 反代）
+      - TS_USERSPACE=true                    # 用户态网络，无需额外权限
+    volumes:
+      - ./tailscale-state:/var/lib/tailscale
+      - ./serve.json:/config/serve.json:ro
+    networks: [dshnet]
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+networks:
+  dshnet: {}
