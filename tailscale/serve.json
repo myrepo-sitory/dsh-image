@@ -1,0 +1,16 @@
+{
+  "TCP": {
+    "443": {
+      "HTTPS": true
+    }
+  },
+  "Web": {
+    "dsh.你的tailnet名.ts.net:443": {
+      "Handlers": {
+        "/": {
+          "Proxy": "http://dsh:3080"
+        }
+      }
+    }
+  }
+}
