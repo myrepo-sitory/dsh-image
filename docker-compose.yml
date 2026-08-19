@@ -14,6 +14,9 @@ services:
     volumes:
       - ./data:/data
       - ./workspace:/workspace
+      # 挂载 NAS 上容器外的文件夹（主机真实路径:容器路径），可加多行
+      - /home/leon/agent:/workspace/agent
+      - /home/leon/agent:/home/leon/agent
     ports:
       - "3080:3080"
       # 更安全（只让 NAS 本机/SSH 隧道访问）：把上面这行改成 "127.0.0.1:3080:3080"
@@ -29,3 +32,22 @@ services:
       timeout: 5s
       retries: 3
       start_period: 30s
+
+  # HTTPS 网关：解决"局域网 HTTP 访问报 crypto.randomUUID is not a function"（浏览器安全上下文限制，
+  # 官方已知问题 deepseek-ai/deepseek-harness 讨论 #2396）。
+  # 加了这个服务后，请用 https://<NAS的IP>:3443 访问（自签证书，浏览器点"高级→继续前往"一次）。
+  caddy:
+    image: docker.m.daocloud.io/library/caddy:2-alpine   # 国内加速前缀；拉不动就换 docker.1panel.live/library/caddy:2-alpine 等
+    container_name: dsh-caddy
+    restart: unless-stopped
+    depends_on:
+      - dsh
+    ports:
+      - "3443:3443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
