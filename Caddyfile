@@ -1,0 +1,8 @@
+{
+  auto_https off
+}
+
+:3443 {
+  tls internal
+  reverse_proxy dsh:3080
+}
