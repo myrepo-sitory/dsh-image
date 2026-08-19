@@ -34,17 +34,16 @@ services:
 
   # HTTPS 网关：解决"局域网 HTTP 访问报 crypto.randomUUID is not a function"（浏览器安全上下文限制，
   # 官方已知问题 deepseek-ai/deepseek-harness 讨论 #2396）。
+  # 用这个镜像（Caddyfile 已打进镜像），NAS 上无需再放置 Caddyfile 文件。
   # 加了这个服务后，请用 https://<NAS的IP>:3443 访问（自签证书，浏览器点"高级→继续前往"一次）。
   caddy:
-    image: docker.m.daocloud.io/library/caddy:2-alpine   # 国内加速前缀；拉不动就换 docker.1panel.live/library/caddy:2-alpine 等
+    image: ghcr.io/你的GitHub用户名/dsh-image-caddy:latest   # 拉不到就换加速前缀 ghcr.nju.edu.cn/你的GitHub用户名/dsh-image-caddy:latest
     container_name: dsh-caddy
     restart: unless-stopped
     depends_on:
       - dsh
     ports:
       - "3443:3443"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
     logging:
       driver: json-file
       options:
