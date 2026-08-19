@@ -1,0 +1,8 @@
+# 本地无关文件不进构建上下文：构建更快、镜像层更干净
+.git
+.github
+data
+workspace
+docker-compose.yml
+README.md
+*.md
