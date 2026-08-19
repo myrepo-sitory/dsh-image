@@ -16,7 +16,6 @@ services:
       - ./workspace:/workspace
       # 挂载 NAS 上容器外的文件夹（主机真实路径:容器路径），可加多行
       - /home/leon/agent:/workspace/agent
-      - /home/leon/agent:/home/leon/agent
     ports:
       - "3080:3080"
       # 更安全（只让 NAS 本机/SSH 隧道访问）：把上面这行改成 "127.0.0.1:3080:3080"
