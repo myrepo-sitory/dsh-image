@@ -6,7 +6,11 @@
 ARG NODE_IMAGE=node:22-bookworm-slim
 FROM ${NODE_IMAGE}
 
-# 锁定 DSH 版本，保证镜像内容可复现（publish.yml 会读取这个值作为版本 tag）
+# 锁定 DSH 版本，保证镜像内容可复现（publish.yml 会读取这个值作为版本 tag）。
+# 两个模式：
+#   0.1.0-rc.7         锁定版本（默认，稳）——官方更新后需要你手动改这里再提交
+#   latest             自动跟随官方最新版——配合 publish.yml 里的每周自动重建，
+#                      官方发新版后最多一周内镜像自动跟上（构建时会解析成确切版本号，仍可复现）
 ARG DSH_VERSION=0.1.0-rc.7
 
 LABEL org.opencontainers.image.title="dsh" \
