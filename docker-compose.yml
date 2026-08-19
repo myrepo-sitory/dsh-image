@@ -1,0 +1,31 @@
+# 在绿联 NAS 上使用的 compose（Docker 应用 →「项目」→ 新建 → 粘贴本文件）
+# 注意把 image 里的「你的GitHub用户名」和 DEEPSEEK_API_KEY 换成你的
+# 拉取失败：把 image 的前缀 ghcr.io 换成加速站（如 ghcr.nju.edu.cn），详见 MIRRORS.md
+services:
+  dsh:
+    image: ghcr.io/你的GitHub用户名/dsh-image:latest
+    # 想锁版本（防止 unknowingly 升级）：把 :latest 改成 :0.1.0-rc.7
+    container_name: dsh
+    restart: unless-stopped
+    environment:
+      - DSH_HOME=/data
+      - DEEPSEEK_API_KEY=sk-你的Key
+      - TZ=Asia/Shanghai
+    volumes:
+      - ./data:/data
+      - ./workspace:/workspace
+    ports:
+      - "3080:3080"
+      # 更安全（只让 NAS 本机/SSH 隧道访问）：把上面这行改成 "127.0.0.1:3080:3080"
+    init: true          # 用 tini 做 1 号进程，回收孤儿进程（个别旧版 Docker 不支持就删掉这行）
+    logging:            # 日志滚动，防止占满 NAS 空间
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3080/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
